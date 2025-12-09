@@ -50,20 +50,26 @@ def find_and_fill_gaps(df: pd.DataFrame, code: str, interval: str, expected_delt
     
     df_sorted = df.sort_index()
     total_gaps_filled = 0
-    max_gap_iterations = 50  # prevent infinite loops
+    max_gap_iterations = 2  # prevent infinite loops
     
     for iteration in range(max_gap_iterations):
+        print("find_and_fill_gaps iteration : %d" %(iteration))
         gaps_found = []
         
-        # Find all gaps
-        for i in range(len(df_sorted) - 1):
-            current_time = df_sorted.index[i]
-            next_time = df_sorted.index[i + 1]
-            time_diff = next_time - current_time
-            
-            # If gap is larger than expected interval (with tolerance)
-            if time_diff > expected_delta * 1.5:  # 1.5x to account for slight timing variations
-                gaps_found.append((current_time, next_time))
+        # Find all gaps using vectorized operations
+        if len(df_sorted) < 2:
+            break
+        
+        # Calculate time differences between consecutive rows
+        time_diffs = df_sorted.index[1:] - df_sorted.index[:-1]
+        
+        # Find gaps larger than expected interval (with tolerance)
+        gap_mask = time_diffs > expected_delta * 1.5
+        
+        # Create list of (start, end) tuples for gaps
+        gap_starts = df_sorted.index[:-1][gap_mask]
+        gap_ends = df_sorted.index[1:][gap_mask]
+        gaps_found = list(zip(gap_starts, gap_ends))
         
         if not gaps_found:
             break  # No more gaps
@@ -71,7 +77,7 @@ def find_and_fill_gaps(df: pd.DataFrame, code: str, interval: str, expected_delt
         # Fill gaps by fetching data for each gap
         new_dfs = []
         iteration_gaps_filled = 0
-        
+        print("gaps_found count : %d" %(len(gaps_found)))
         for gap_start, gap_end in gaps_found:
             # Calculate how many records should be in this gap
             expected_count = int((gap_end - gap_start) / expected_delta) - 1
@@ -153,6 +159,7 @@ def fetch_coin_ohlcv(code: str, interval: str, start_dt=None, end_dt=None):
     expected_delta = interval_to_timedelta(interval)
 
     for _ in range(max_iter):
+        print("%s\t%s\t%d" %(code, interval, _))
         # pyupbit 'to' 는 일 단위까지만 사용되는 것으로 보이므로 날짜만 전달
         to_str = to_cursor.strftime("%Y-%m-%d")
         # interval 이 분봉인 경우, 하루(1440분)를 커버하도록 count=1440 사용
