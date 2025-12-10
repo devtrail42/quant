@@ -21,13 +21,14 @@ def get_ohlcv(code: str, interval: str, count: int, to: str):
     """Get OHLCV data with retry if data count is less than requested count."""
     dfs = []
     merged = None
-    max_retries = 3
+    max_retries = 5
     
     for retry in range(max_retries):
-        df = pyupbit.get_ohlcv(code, interval=interval, count=count, to=to).drop_duplicates()
+        df = pyupbit.get_ohlcv(code, interval=interval, count=count, to=to)
         time.sleep(0.11)
         if isNotDataframeOrEmpty(df):
             continue
+        df = df.drop_duplicates()
         dfs.append(df)
         if len(dfs) == 1:
             merged = df
