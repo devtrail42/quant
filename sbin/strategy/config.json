@@ -1,0 +1,30 @@
+[
+    {
+        "strategy_name": "explode_volume_breakout",
+        "buy_signal_config": {
+            "window_list": [60],
+            "prev_top_vol_del_ratio_list": [0.1, 0.0],
+            "vol_ratio_list": [100, 75],
+            "co_ratio_list": [1.02, 1.03],
+            "utr_list": [0.9, 0.8]
+        },
+        "sell_signal_config": {
+            "low_limit_ratio_list": [0.98],
+            "high_limit_ratio_list": [1.03, 1.04, 1.05, 1.06]
+        }
+    },
+    {
+        "strategy_name": "explode_volume_volatility_breakout",
+        "buy_signal_config": {
+            "window_list": [60, 120],
+            "prev_top_vol_del_ratio_list": [0.1, 0.0],
+            "vol_ratio_list": [100, 75],
+            "k_list": [1.5, 2.5, 3.5],
+            "utr_list": [0.9, 0.8]
+        },
+        "sell_signal_config": {
+            "low_limit_ratio_list": [0.98],
+            "high_limit_ratio_list": [1.03, 1.04, 1.05, 1.06]
+        }
+    }
+]
