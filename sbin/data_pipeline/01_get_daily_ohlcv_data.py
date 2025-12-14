@@ -10,8 +10,8 @@ import traceback
 import sys
 import sqlite3
 
-pd.options.display.max_columns = None
-pd.options.display.max_rows = None
+# pd.options.display.max_columns = None
+# pd.options.display.max_rows = None
 
 def isNotDataframeOrEmpty(df):
     return not isinstance(df, pd.core.frame.DataFrame) or (isinstance(df, pd.core.frame.DataFrame) and df.empty)
@@ -25,15 +25,18 @@ def get_ohlcv(code: str, interval: str, count: int, to: str):
     
     for retry in range(max_retries):
         df = pyupbit.get_ohlcv(code, interval=interval, count=count, to=to)
-        time.sleep(0.11)
+        sleep_time = 0.11 * ((retry+1)**2)
+        time.sleep(sleep_time)
         if isNotDataframeOrEmpty(df):
             continue
-        df = df.drop_duplicates()
+        df = df[~df.index.duplicated(keep='last')]
         dfs.append(df)
+        if retry > 0:
+            print("retry : ", retry, "sleep_time : ", sleep_time, "df len : ", len(df))
         if len(dfs) == 1:
             merged = df
         elif len(dfs) > 1:
-            merged = pd.concat(dfs).sort_index().drop_duplicates()
+            merged = pd.concat(dfs).sort_index()
 
         if len(merged) == count:
             break
@@ -43,7 +46,8 @@ def get_ohlcv(code: str, interval: str, count: int, to: str):
     
     # Merge all retry results
     merged = pd.concat(dfs)
-    merged = merged.sort_index().drop_duplicates()
+    merged = merged.sort_index()
+    merged = merged[~merged.index.duplicated(keep='last')]
     
     return merged
 
@@ -54,26 +58,26 @@ def fetch_coin_ohlcv(code: str, interval: str, str_start_dt=None, str_end_dt=Non
     str_end_dt = str_end_dt if str_end_dt else datetime.datetime.now().strftime("%Y-%m-%d")
     to_cursor = str_end_dt
     max_iter = 100000  # safety guard
-
+    count = 200
     for _ in range(max_iter):
         print("%s\t%s\t%d" %(code, interval, _))
-        if interval.startswith("minute"):
-            count = 1440
-        else:
-            count = 200
-
         df = get_ohlcv(code, interval=interval, count=count, to=to_cursor)
         if isNotDataframeOrEmpty(df):
+            print(code, interval, count, to_cursor)
+            sys.exit()
             break
-        # print(df.head())
         dfs.append(df)
 
-        str_earliest_date = df.index.min().strftime("%Y-%m-%d")
+        str_earliest_date = df.index.min().strftime("%Y-%m-%d %H:%M:%S")
 
         if str_start_dt and str_earliest_date <= str_start_dt:
             break
+        to_cursor = (
+            pd.to_datetime(str_earliest_date)
+            .tz_localize("Asia/Seoul")
+            .tz_convert("UTC")
+        ).strftime("%Y-%m-%d %H:%M:%S")
 
-        to_cursor = str_earliest_date
         time.sleep(0.11)  # throttle to avoid rate-limit
 
     if not dfs:
@@ -86,7 +90,8 @@ def fetch_coin_ohlcv(code: str, interval: str, str_start_dt=None, str_end_dt=Non
         end_dt = datetime.datetime.strptime(str_end_dt, "%Y-%m-%d") \
                         .replace(hour=9, minute=0, second=0, microsecond=0)
         merged = merged[(merged.index >= start_dt) & (merged.index < end_dt)]
-    merged = merged.sort_index().drop_duplicates()
+    merged = merged.sort_index()
+    merged = merged[~merged.index.duplicated(keep='last')]
     
     return merged
 
@@ -178,6 +183,7 @@ else:
 if args.market == 'coin':
     tickers = [t for t in pyupbit.get_tickers() if 'KRW-' in t]
     # tickers = ["KRW-BTC"]
+    tickers = ["KRW-BEAM"]
     print("tickers len :", len(tickers))
     
     # Table name: {market}_ohlcv_{interval}
