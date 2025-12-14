@@ -62,10 +62,9 @@ def fetch_coin_ohlcv(code: str, interval: str, str_start_dt=None, str_end_dt=Non
     for _ in range(max_iter):
         print("%s\t%s\t%d" %(code, interval, _))
         df = get_ohlcv(code, interval=interval, count=count, to=to_cursor)
-        
+
         if isNotDataframeOrEmpty(df):
             print(code, interval, count, to_cursor)
-            sys.exit()
             break
         dfs.append(df)
 
@@ -98,6 +97,7 @@ def fetch_coin_ohlcv(code: str, interval: str, str_start_dt=None, str_end_dt=Non
 
 def clean_and_save_to_db(df: pd.DataFrame, conn: sqlite3.Connection, table_name: str, ticker: str, interval: str):
     """Save OHLCV data to SQLite database table with upsert logic."""
+    print("clean_and_save_to_db", ticker, interval)
     if 'value' in df.columns:
         df = df.drop('value', axis=1)
     
