@@ -106,9 +106,9 @@ parser = argparse.ArgumentParser(description='02_strategy_unit_backtest')
 parser.add_argument('--root_dir', type=str, default="/Users/yongbeom/cyb/project/2025/quant")
 parser.add_argument('--market', type=str, default="coin")
 parser.add_argument('--interval', type=str, default="minute1")
+parser.add_argument('--target_ticker', type=str, default="all") #KRW-BTC
 args = parser.parse_args()
 
-# 사용 예시
 if __name__ == "__main__":
     table_name = f'{args.market}_ohlcv_{args.interval}'
     db_path = os.path.join(args.root_dir, f'var/data/{table_name}.db')
@@ -116,7 +116,10 @@ if __name__ == "__main__":
     with open(strategy_config_path, 'r', encoding='utf-8') as f:
         strategy_config_list = json.load(f)
     tickers = get_tickers(db_path, table_name)
-
+    if args.target_ticker != 'all':
+        if args.target_ticker in tickers:
+            tickers = [args.target_ticker]
+    
     for strategy_config in strategy_config_list:
         strategy_name = strategy_config['strategy_name']
         buy_params_list = get_strategy_params_list(strategy_name, strategy_config['buy_signal_config'])
