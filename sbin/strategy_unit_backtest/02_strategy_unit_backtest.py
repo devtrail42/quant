@@ -4,6 +4,7 @@ import sqlite3
 import pandas as pd
 import argparse
 import json
+import ast
 from collections import defaultdict
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from strategy.strategy import apply_strategy, get_strategy_params_list, get_sell_strategy_params_list
@@ -156,8 +157,12 @@ if __name__ == "__main__":
                 params_n_lose = sum(v[1] for v in ticker_win_loses.values())
                 params_win_ratio = params_n_win/float(params_n_win+params_n_lose) if params_n_win + params_n_lose > 0 else 0.0
                 buy_str_params, sell_str_params = dic_str_params.split('-')
-                buy_params = json.loads(buy_str_params)
-                sell_params = json.loads(sell_str_params)
+                print(buy_str_params)
+                print(sell_str_params)
+                buy_params = ast.literal_eval(buy_str_params)
+                sell_params = ast.literal_eval(sell_str_params)
+                # buy_params = json.loads(buy_str_params)
+                # sell_params = json.loads(sell_str_params)
                 low_limit_ratio = sell_params['low_limit_ratio']
                 high_limit_ratio = sell_params['high_limit_ratio']
                 rrr = (high_limit_ratio-1.0) / (1.0-low_limit_ratio)
