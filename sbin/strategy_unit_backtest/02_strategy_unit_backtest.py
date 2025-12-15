@@ -100,6 +100,7 @@ def apply_sell_signal_strategy(
                 break
             elif j == len(df) - 1:
                 df.loc[idx, "result"] = -1
+                
     return df
 
 parser = argparse.ArgumentParser(description='02_strategy_unit_backtest')
@@ -165,16 +166,12 @@ if __name__ == "__main__":
                 params_n_lose = sum(v[1] for v in ticker_win_loses.values())
                 params_win_ratio = params_n_win/float(params_n_win+params_n_lose) if params_n_win + params_n_lose > 0 else 0.0
                 buy_str_params, sell_str_params = dic_str_params.split('-')
-                # print(buy_str_params)
-                # print(sell_str_params)
                 buy_params = ast.literal_eval(buy_str_params)
                 sell_params = ast.literal_eval(sell_str_params)
-                # buy_params = json.loads(buy_str_params)
-                # sell_params = json.loads(sell_str_params)
                 low_limit_ratio = sell_params['low_limit_ratio']
                 high_limit_ratio = sell_params['high_limit_ratio']
                 rrr = (high_limit_ratio-1.0) / (1.0-low_limit_ratio)
-                print("%s  -  win count : %d, loss count : %d, win_ratio : %.2f, risk-reward-ratio : %.1f" %(dic_str_params, params_n_win, params_n_lose, params_win_ratio, rrr))
+                print("%s  -  win count : %d, loss count : %d, win_ratio : %.2f, risk-reward-ratio : %.2f" %(dic_str_params, params_n_win, params_n_lose, params_win_ratio, rrr))
                 params_win_loses[dic_str_params] = (params_n_win, params_n_lose)
                 params_expected_returns[dic_str_params] = (params_win_ratio*rrr) - (1-params_win_ratio)
         
@@ -183,8 +180,25 @@ if __name__ == "__main__":
         print("%s" %(strategy_name))
         print("%s\t%.2f" %(strategy_name, expected_return_mean))
         print("### STRATEGY_PARAMS_RESULT START ###")
+
+        print("######### Expected Return Sorted #########")
         sorted_results = sorted(params_expected_returns.items(), key=lambda x: x[1], reverse=True)
+        for params_str, expected_return in sorted_results[:50]:
+            print(params_str, expected_return, " | ", params_win_loses[params_str])
+
+        print("######### Total ROR Sorted #########")
+        params_total_rors = {}
         for params_str, expected_return in sorted_results:
-            print(params_str, expected_return)
+            buy_str_params, sell_str_params = params_str.split('-')
+            buy_params = ast.literal_eval(buy_str_params)
+            sell_params = ast.literal_eval(sell_str_params)
+            low_limit_ratio = sell_params['low_limit_ratio']
+            high_limit_ratio = sell_params['high_limit_ratio']
+            win_cnt, lose_cnt = params_win_loses[params_str]
+            params_total_rors[params_str] = high_limit_ratio**win_cnt * low_limit_ratio**lose_cnt
+        sorted_results = sorted(params_total_rors.items(), key=lambda x: x[1], reverse=True)
+        for params_str, total_ror in sorted_results[:50]:
+            print(params_str, total_ror, " | ", params_win_loses[params_str])
+
         print("### STRATEGY_PARAMS_RESULT END ###")
         print("### STRATEGY_RESULT END ###")

@@ -1,7 +1,7 @@
 import numpy as np
 import inspect
 import itertools
-
+import talib
 
 def apply_strategy(df, strategy_name, params):
     if strategy_name == "explode_volume_breakout":
@@ -12,6 +12,8 @@ def apply_strategy(df, strategy_name, params):
         return explode_volume_breakout_2(df, params['window'], params['vol_ratio'], params['short_window'], params['short_vol_ratio'], params['k'], params['utr'])
     elif strategy_name == 'explode_volume_volatility_breakout_2':
         return explode_volume_volatility_breakout_2(df, params['window'], params['vol_ratio'], params['short_window'], params['short_vol_ratio'], params['k'], params['utr'])
+    elif strategy_name == 'low_bb_du':
+        return low_bb_du(df, params['window'], params['close_band_ratio_lower'], params['ol_hl_ratio_upper'], params['close_open_ratio_upper'], params['over_sell_threshold'])
     else:
         return None
 
@@ -83,7 +85,7 @@ def explode_volume_breakout(
         vol_ratio=50, 
         co_ratio=1.02, 
         utr=0.8
-    ):
+):
     top_vol_trimmed_mean = df['volume'].shift(1).rolling(window=window).apply(lambda x: trimmed_mean(x, prev_top_vol_del_ratio), raw=True)
     df['volume_signal'] = df['volume'] > (top_vol_trimmed_mean * vol_ratio)
 
@@ -103,7 +105,7 @@ def explode_volume_volatility_breakout(
         vol_ratio=50, 
         k=3.0, 
         utr=0.8
-    ):
+):
     top_vol_trimmed_mean = df['volume'].shift(1).rolling(window=window).apply(lambda x: trimmed_mean(x, prev_top_vol_del_ratio), raw=True)
     df['volume_signal'] = df['volume'] > (top_vol_trimmed_mean * vol_ratio)
 
@@ -125,7 +127,7 @@ def explode_volume_breakout_2(
         short_vol_ratio=50, 
         co_ratio=1.02, 
         utr=0.9
-    ):
+):
     vol_mean = df['volume'].shift(1).rolling(window=window).mean()
     df['volume_signal'] = df['volume'] > (vol_mean * vol_ratio)
 
@@ -149,7 +151,7 @@ def explode_volume_volatility_breakout_2(
         short_vol_ratio=50, 
         k=3.0, 
         utr=0.8
-    ):
+):
     vol_mean = df['volume'].shift(1).rolling(window=window).mean()
     df['volume_signal'] = df['volume'] > (vol_mean * vol_ratio)
 
@@ -166,6 +168,50 @@ def explode_volume_volatility_breakout_2(
     
     return df
 
+def low_bb_du(
+    df,
+    window=2,
+    close_band_ratio_lower=0.2,
+    ol_hl_ratio_upper=0.3,
+    close_open_ratio_upper=1.005,
+    over_sell_threshold=20
+):
+    
+    df['bb_upper'], df['bb_mid'], df['bb_lower'] = talib.BBANDS(df['close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+    df['stoch_k'], df['stoch_d'] = talib.STOCH(
+        df['high'],
+        df['low'],
+        df['close'],
+        fastk_period=14,
+        slowk_period=3,
+        slowk_matype=0,
+        slowd_period=3,
+        slowd_matype=0
+    )
+
+    df['over_sell_golden_cross'] = (df['stoch_d'] > df['stoch_k']) & (df['stoch_d'].shift(1) < df['stoch_k'].shift(1)) & (df['stoch_k'] < over_sell_threshold)
+
+    df['bb_low_signal'] = False
+    for i in range(1, window+1):
+        df['bb_low_signal'] |= df['close'].shift(i) < df['bb_lower'].shift(i)
+
+    df['close_band_ratio_lower_signal'] = (((df['close'] - df['bb_lower']) / (df['bb_upper'] - df['bb_lower'])) < close_band_ratio_lower)
+    df['close_lb_up_signal'] = (df['close'] > df['bb_lower'])
+    df['ol_hl_ratio_upper_signal'] = (
+        (df['high'] != df['low']) &
+        (((df['open'] - df['low']) / (df['high'] - df['low'])) > ol_hl_ratio_upper)
+    )
+
+    df['close_open_ratio_upper_signal'] = df['close'] > df['open'] * close_open_ratio_upper
+
+    df['prev_signal'] = df['bb_low_signal'] & df['close_lb_up_signal'] & df['close_band_ratio_lower_signal'] & df['ol_hl_ratio_upper_signal'] & df['close_open_ratio_upper_signal'] & df['over_sell_golden_cross']
+    df['signal'] = df['prev_signal'] & ~(
+        df['prev_signal'].shift(1).rolling(window).max().fillna(0).astype(bool)
+    )
+    
+    return df
+
+
 
 # 이곳에 strategy를 등록해야 unit test가 자동으로 된다.
 STRATEGY_REGISTRY = {
@@ -173,5 +219,6 @@ STRATEGY_REGISTRY = {
     "explode_volume_breakout": explode_volume_breakout,
     "explode_volume_volatility_breakout": explode_volume_volatility_breakout,
     "explode_volume_breakout_2": explode_volume_breakout_2,
-    "explode_volume_volatility_breakout_2": explode_volume_volatility_breakout_2
+    "explode_volume_volatility_breakout_2": explode_volume_volatility_breakout_2,
+    "low_bb_du": low_bb_du
 }
