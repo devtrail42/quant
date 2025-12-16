@@ -74,6 +74,7 @@ def apply_sell_signal_strategy(
     df,
     params
 ):
+    # TODO
     low_limit_ratio = params['low_limit_ratio']
     high_limit_ratio = params['high_limit_ratio']
 
