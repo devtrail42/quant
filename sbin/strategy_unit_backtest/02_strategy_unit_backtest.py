@@ -174,7 +174,7 @@ if __name__ == "__main__":
                 rrr = (high_limit_ratio-1.0) / (1.0-low_limit_ratio)
                 print("%s  -  win count : %d, loss count : %d, win_ratio : %.2f, risk-reward-ratio : %.2f" %(dic_str_params, params_n_win, params_n_lose, params_win_ratio, rrr))
                 params_win_loses[dic_str_params] = (params_n_win, params_n_lose)
-                params_expected_returns[dic_str_params] = (params_win_ratio*rrr) - (1-params_win_ratio)
+                params_expected_returns[dic_str_params] =  (high_limit_ratio**(params_win_ratio*100)) * (low_limit_ratio**((1-params_win_ratio)*100))
         
         expected_return_mean = sum(params_expected_returns.values()) / len(params_expected_returns)
         print("### STRATEGY_RESULT START ###")
@@ -196,7 +196,8 @@ if __name__ == "__main__":
             low_limit_ratio = sell_params['low_limit_ratio']
             high_limit_ratio = sell_params['high_limit_ratio']
             win_cnt, lose_cnt = params_win_loses[params_str]
-            params_total_rors[params_str] = high_limit_ratio**win_cnt * low_limit_ratio**lose_cnt
+            log_total_ror = win_cnt * math.log10(high_limit_ratio) + lose_cnt * math.log10(low_limit_ratio)
+            params_total_rors[params_str] = 10 ** log_total_ror
         sorted_results = sorted(params_total_rors.items(), key=lambda x: x[1], reverse=True)
         for params_str, total_ror in sorted_results[:50]:
             print(params_str, total_ror, " | ", params_win_loses[params_str])

@@ -20,6 +20,8 @@ def apply_strategy(df, strategy_name, params):
         return low_bb_du_3(df, params['window'], params['close_band_ratio_lower'], params['ol_hl_ratio_upper'], params['close_open_ratio_upper'], params['over_sell_threshold'])
     elif strategy_name == 'low_bb_du_4':
         return low_bb_du_4(df, params['window'], params['co_ratio_range'], params['over_sell_threshold'], params['cwlc_ratio_lower'], params['lo_ratio_lower'], params['close_band_ratio_lower'], params['cond3_idx'])
+    elif strategy_name == 'low_bb_dru':
+        return low_bb_dru(df, params['window'], params['co_upper'], params['close_band_ratio_lower'], params['prev_co_and_lc_range'], params['over_sell_threshold'], params['cond6_idx'])
     else:
         return None
 
@@ -389,7 +391,7 @@ def low_bb_du_4(
     if cond3_idx == 0:
         df['cond3'] = (df['stoch_k'] < over_sell_threshold) & (df['stoch_gc'])
     elif cond3_idx == 1:
-        df['stoch_gc2'] = ((df['stoch_d'] < df['stoch_k']) & (df['stoch_d'].shift(2) > df['stoch_k'].shift(2)))
+        df['stoch_gc2'] = ((df['stoch_d'] > df['stoch_k']) & (df['stoch_d'].shift(2) < df['stoch_k'].shift(2)))
         df['cond3'] = (df['stoch_k'] < over_sell_threshold) & ((df['stoch_gc'])|df['stoch_gc2'])
     elif cond3_idx == 2:
         df['cond3'] = (df['stoch_k'] < over_sell_threshold) & (df['stoch_gc'].rolling(window).max().fillna(False).astype(bool))
@@ -424,6 +426,64 @@ def low_bb_du_4(
 
     return df
 
+def low_bb_dru(
+    df,
+    window=3,
+    co_upper=1.002,
+    close_band_ratio_lower=0.25,
+    prev_co_and_lc_range=[1.002, 0.98],
+    over_sell_threshold=25,
+    cond6_idx=0
+):
+    df['cond1'] = ((df['close'] / df['open']) >= co_upper)
+
+    df['bb_upper'], df['bb_mid'], df['bb_lower'] = talib.BBANDS(df['close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+    df['cond2'] = (df['close'] > df['bb_lower']) & (df['open'] > df['bb_lower'])
+    # TODO : (df['close'].shift(1) > df['bb_lower'].shift(1)) vs (df['close'].shift(1) > df['bb_lower'])
+
+    df['cond3'] = ((df['close'].shift(1) / df['open'].shift(1)) < prev_co_and_lc_range[0]) & ((df['low'].shift(1) / df['close'].shift(1)) < prev_co_and_lc_range[1])
+    
+    cond4_raw = ((df['close'] < df['bb_lower']) & ((df['close'] / df['open']) < 1.0))
+    df['cond4'] = (cond4_raw.shift(1).rolling(window).max().fillna(False).astype(bool))
+
+    df['cond5'] = (((df['close'] - df['bb_lower']) / (df['bb_upper'] - df['bb_lower'])) < close_band_ratio_lower)
+
+    df['stoch_k'], df['stoch_d'] = talib.STOCH(
+        df['high'],
+        df['low'],
+        df['close'],
+        fastk_period=14,
+        slowk_period=3,
+        slowk_matype=0,
+        slowd_period=3,
+        slowd_matype=0
+    )
+
+    
+    if cond6_idx == 0:
+        df['cond6'] = (df['stoch_k'] < over_sell_threshold) & (df['close'].shift(1) > df['bb_lower'].shift(1))
+    elif cond6_idx == 1:
+        df['stoch_gc'] = ((df['stoch_d'] < df['stoch_k']) & (df['stoch_d'].shift(1) > df['stoch_k'].shift(1)))
+        df['cond6'] = (df['stoch_k'] < over_sell_threshold) & (df['stoch_gc'].rolling(window).max().fillna(False).astype(bool)) & (df['close'].shift(1) > df['bb_lower'].shift(1))
+    elif cond6_idx == 2:
+        df['stoch_gc'] = ((df['stoch_d'] < df['stoch_k']) & (df['stoch_d'].shift(1) > df['stoch_k'].shift(1)))
+        df['cond6'] = (df['stoch_gc'].rolling(window).max().fillna(False).astype(bool)) & (df['close'].shift(1) > df['bb_lower'].shift(1))
+    elif cond6_idx == 3:
+        df['cond6'] = (df['stoch_k'] < over_sell_threshold) & (df['close'].shift(1) > df['bb_lower'])
+    elif cond6_idx == 4:
+        df['stoch_gc'] = ((df['stoch_d'] < df['stoch_k']) & (df['stoch_d'].shift(1) > df['stoch_k'].shift(1)))
+        df['cond6'] = (df['stoch_k'] < over_sell_threshold) & (df['stoch_gc'].rolling(window).max().fillna(False).astype(bool)) & (df['close'].shift(1) > df['bb_lower'])
+    else:
+        df['stoch_gc'] = ((df['stoch_d'] < df['stoch_k']) & (df['stoch_d'].shift(1) > df['stoch_k'].shift(1)))
+        df['cond6'] = (df['stoch_gc'].rolling(window).max().fillna(False).astype(bool)) & (df['close'].shift(1) > df['bb_lower'])
+
+    df['cond1-6'] = df['cond1'] & df['cond2'] & df['cond3'] & df['cond4'] & df['cond5'] & df['cond6']
+    
+    prev_true_exists = (df['cond1-6'].shift(1).rolling(window).max().fillna(False).astype(bool))
+    df['signal'] = df['cond1-6'] & (~prev_true_exists)
+
+    return df
+
 def pullback_(
     df,
     window=2,
@@ -448,5 +508,6 @@ STRATEGY_REGISTRY = {
     "low_bb_du": low_bb_du,
     "low_bb_du_2": low_bb_du_2,
     "low_bb_du_3": low_bb_du_3,
-    "low_bb_du_4": low_bb_du_4
+    "low_bb_du_4": low_bb_du_4,
+    "low_bb_dru": low_bb_dru
 }

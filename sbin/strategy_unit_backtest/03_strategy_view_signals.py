@@ -24,25 +24,32 @@ def view_chart(df):
         'close': 'Close'
     })
 
+    
     bb_upper = mpf.make_addplot(df_plot['bb_upper'], color='red', width=1)
     bb_mid   = mpf.make_addplot(df_plot['bb_mid'],   color='green', width=1)
     bb_lower = mpf.make_addplot(df_plot['bb_lower'], color='blue', width=1)
 
-    signal_y = np.where(df_plot['signal'], df_plot['Low'] * 0.995, np.nan)
+    add_plots = [bb_upper, bb_mid, bb_lower]
 
-    signal_plot = mpf.make_addplot(
-        signal_y,
-        type='scatter',
-        marker='^',
-        markersize=120,
-        color='black'
-    )
+    if 'signal' in df_plot.columns and df_plot['signal'].any():
+        signal_y = df_plot['Low'] * 0.995
+        signal_y = signal_y.where(df_plot['signal'])  # ❗ 길이 유지
+
+        signal_plot = mpf.make_addplot(
+            signal_y,
+            type='scatter',
+            marker='^',
+            markersize=120,
+            color='black'
+        )
+        add_plots.append(signal_plot)
+
 
     fig, axes = mpf.plot(
         df_plot,
         type='candle',
         style='yahoo',
-        addplot=[bb_upper, bb_mid, bb_lower, signal_plot],
+        addplot=add_plots,
         volume=False,
         figsize=(16, 8),
         returnfig=True
@@ -127,22 +134,26 @@ parser.add_argument('--target_strategy', type=str, default="all") #explode_volum
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    table_name = f'{args.market}_ohlcv_{args.interval}'
-    db_path = os.path.join(args.root_dir, f'var/data/{table_name}.db')
     strategy_config_path = os.path.join(args.root_dir, 'sbin/strategy/best_config.json')
     with open(strategy_config_path, 'r', encoding='utf-8') as f:
         strategy_config_list = json.load(f)
     
-    tickers = get_tickers(db_path, table_name)
-    if args.target_ticker != 'all':
-        if args.target_ticker in tickers:
-            tickers = [args.target_ticker]
-    
-    
     for strategy_config in strategy_config_list:
+        interval = args.interval
+        if 'interval' in strategy_config:
+            interval = strategy_config['interval']
+        table_name = f'{args.market}_ohlcv_{interval}'
+        db_path = os.path.join(args.root_dir, f'var/data/{table_name}.db')
+
+        tickers = get_tickers(db_path, table_name)
+        if args.target_ticker != 'all':
+            if args.target_ticker in tickers:
+                tickers = [args.target_ticker]
+
         strategy_name = strategy_config['strategy_name']
         if args.target_strategy != 'all' and args.target_strategy != strategy_name:
             continue
+        
         buy_params = strategy_config['buy_signal_config']
         sell_params = strategy_config['sell_signal_config']
         for ticker in tickers:
@@ -153,6 +164,7 @@ if __name__ == "__main__":
                     strategy_name=strategy_name,
                     params=buy_params
                 )
+            print(df.head())
             view_chart(df)
 
                 
