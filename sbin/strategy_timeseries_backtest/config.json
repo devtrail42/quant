@@ -2,42 +2,42 @@
     "low_bb_dru.minute60": {
         "start_date": "201701010900",
         "end_date": "202512240800",
-        "max_tx_cnts": [10, 20],
+        "max_tx_cnts": [20, 10],
         "uppers_list": [[1.1], [1.15]],
         "lower_list": [0.9, 0.925]
     },
     "low_bb_dru.day": {
         "start_date": "201701010900",
         "end_date": "202512240800",
-        "max_tx_cnts": [10, 20],
+        "max_tx_cnts": [20, 10],
         "uppers_list": [[1.15], [1.2]],
         "lower_list": [0.9, 0.925]
     },
     "low_bb_du_2.minute60": {
         "start_date": "201701010900",
         "end_date": "202512240800",
-        "max_tx_cnts": [10, 20],
+        "max_tx_cnts": [20, 10],
         "uppers_list": [[1.1], [1.15]],
         "lower_list": [0.9, 0.925]
     },
     "low_bb_du_2.minute240": {
         "start_date": "201701010900",
         "end_date": "202512240800",
-        "max_tx_cnts": [10, 20],
+        "max_tx_cnts": [20, 10],
         "uppers_list": [[1.1], [1.075]],
         "lower_list": [0.95, 0.925]
     },
     "low_bb_du_4.minute60": {
         "start_date": "201701010900",
         "end_date": "202512240800",
-        "max_tx_cnts": [10, 20],
+        "max_tx_cnts": [20, 10],
         "uppers_list": [[1.1], [1.15]],
         "lower_list": [0.9, 0.925]
     },
     "low_bb_du_4.minute240": {
         "start_date": "201701010900",
         "end_date": "202512240800",
-        "max_tx_cnts": [10, 20],
+        "max_tx_cnts": [20, 10],
         "uppers_list": [[1.1], [1.075]],
         "lower_list": [0.95, 0.925]
     }

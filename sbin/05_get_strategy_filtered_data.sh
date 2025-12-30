@@ -19,4 +19,8 @@ if [ -z "$target_interval" ]; then
     target_interval=minute60
 fi
 
-python train_xgb/05_get_strategy_filtered_data.py --root_dir ${root_dir} --market ${market} --target_strategy_feature low_bb_du --interval minute60
+python train_xgb/05_get_strategy_filtered_data.py --root_dir ${root_dir} --market ${market} --target_strategy_feature low_bb_du --interval minute60 &
+python train_xgb/05_get_strategy_filtered_data.py --root_dir ${root_dir} --market ${market} --target_strategy_feature low_bb_du --interval day &
+python train_xgb/05_get_strategy_filtered_data.py --root_dir ${root_dir} --market ${market} --target_strategy_feature low_bb_du --interval minute240 &
+wait
+
